@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # This CloudBuild will be triggered by push to staging branch
 #
 
@@ -31,3 +32,46 @@ substitutions:
     _FUNCTION_RUNTIME : nodejs24
     _ENTRY_POINT      : helloWorld
 
+=======
+# Cloud Build configuration for Google Cloud Functions
+steps:
+  # 1. build step (now this is demo-echo.In real project here would be run npm install)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args: ['-c', 'echo "Building $_FUNCTION_NAME..."']
+    id: BUILD
+  
+  # 2. Testing step
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args: ['-c', 'echo "Running tests..."']
+    id: TEST  
+  
+  # 3. Deploy step
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - gcloud
+      - functions
+      - deploy
+      - $_FUNCTION_NAME
+      - --region=$_FUNCTION_REGION
+      - --source=.
+      - --trigger-http
+      - --runtime=$_FUNCTION_RUNTIME
+      - --entry-point=$_ENTRY_POINT
+      # --project зазвичай не потрібен, якщо білд йде в тому ж проекті,
+      # але ми залишили його для гнучкості.
+      - --project=$PROJECT_ID 
+    id: DEPLOY
+
+# if 'build.service_account' is specified, the build must either (a) specify 'build.logs_bucket'
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+    _FUNCTION_NAME    : my-nodejs-app
+    _FUNCTION_REGION  : europe-west3
+    # УВАГА: Перевірте версію nodejs. Наразі стабільні: nodejs18, nodejs20, nodejs22.
+    _FUNCTION_RUNTIME : nodejs22
+    _ENTRY_POINT      : helloWorld
+>>>>>>> bbf65c33c5e5100671c712779aa2374de24077da
