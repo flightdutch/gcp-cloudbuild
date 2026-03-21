@@ -32,7 +32,7 @@ steps:
       - --entry-point=$_ENTRY_POINT
       #--project is usually not needed if the build is in the same project,
       # but we left it in for flexibility.
-      - --project=$_FUNCTION_PROJECT
+      - --project=$_PROJECT_ID
       # Allow unauthorized access for tests (optional)
       - --allow-unauthenticated
     id: DEPLOY
@@ -42,7 +42,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
-    _FUNCTION_PROJECT : europe-west3
+    _PROJECT_ID : test-cloud-run-490713
     _FUNCTION_NAME    : my-nodejs-app
     _FUNCTION_REGION  : europe-west3
     # WARNING: Check your nodejs version. Currently stable: nodejs18, nodejs20, nodejs22.
