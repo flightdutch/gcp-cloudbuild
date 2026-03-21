@@ -19,7 +19,7 @@ steps:
     id: TEST
 
   # 3. DEPLOY: Deploying a function in Google Cloud Functions
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     args:
       - gcloud
       - functions
