@@ -1,0 +1,16 @@
+/*
+npm: describes the project and its dependencies.
+Google Cloud Functions will automatically run npm install during deployment based on this file.
+*/
+{
+  "name": "my-nodejs-app",
+  "version": "1.0.0",
+  "description": "Cloud Function triggered by HTTP",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.0.0"
+  }
+}
