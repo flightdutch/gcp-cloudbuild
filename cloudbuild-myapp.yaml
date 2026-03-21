@@ -42,7 +42,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
-    _FUNCTION_PROJECT : europe_west3
+    _FUNCTION_PROJECT : europe-west3
     _FUNCTION_NAME    : my-nodejs-app
     _FUNCTION_REGION  : europe-west3
     # WARNING: Check your nodejs version. Currently stable: nodejs18, nodejs20, nodejs22.
