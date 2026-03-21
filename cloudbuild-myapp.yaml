@@ -1,18 +1,18 @@
 # Cloud Build configuration for Google Cloud Functions
 steps:
-  # 1. Етап збірки (зараз просто ехо, але тут зазвичай запускають npm install)
+  # 1. build step (now this is demo-echo.In real project here would be run npm install)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args: ['-c', 'echo "Building $_FUNCTION_NAME..."']
     id: BUILD
   
-  # 2. Етап тестування
+  # 2. Testing step
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args: ['-c', 'echo "Running tests..."']
     id: TEST  
   
-  # 3. Деплой функції
+  # 3. Deploy step
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     args:
       - gcloud
@@ -29,7 +29,7 @@ steps:
       - --project=$PROJECT_ID 
     id: DEPLOY
 
-# ЦЕЙ БЛОК ВИПРАВЛЯЄ ВАШУ ПОМИЛКУ З ЛОГАМИ
+# if 'build.service_account' is specified, the build must either (a) specify 'build.logs_bucket'
 options:
   logging: CLOUD_LOGGING_ONLY
 
