@@ -34,7 +34,8 @@ steps:
       # but we left it in for flexibility.
       - --project=$_PROJECT_ID
       # Allow unauthorized access for tests (optional)
-      - --allow-unauthenticated
+      # doesn't work without Security Admin (roles/iam.securityAdmin)
+      # - --allow-unauthenticated
     id: DEPLOY
 
 # if 'build.service_account' is specified, the build must either (a) specify 'build.logs_bucket'
