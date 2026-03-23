@@ -1,47 +1,77 @@
 # gcp-cloudbuild using github-push trigger
 test how to use github-cloudbuild (http-trigger)
 
+GCP Cloud build: Building path of your code:
+GitHub ➔ Cloud Build (Trigger) ➔ Cloud Storage (Source Code) ➔ Cloud Build (Worker/Docker) ➔ Artifact Registry (Runtime Image)➔ Cloud Functions.
 
 ## Cloud Build:
   Triggers - Manage repositories: build connect GCP-github repo
   Triggers - Create trigger: when run build
 
-## IAM - Service Accounts: create github account and add Roles:
-  Cloud Function Developer
-  Service Account User
+## Service API
 
-## Essential roles for deployment:
-- Cloud Functions Developer (roles/cloudfunctions.developer): Allows you to create, update, and delete functions.
+### show enabled services API
+gcloud services list --enabled
 
-- Service Account User (roles/iam.serviceAccountUser): Critical. Allows Cloud Build to "impersonate" the function's runtime account when deploying it.
+## Build Function: Service-account
+IAM -> Service account > Create
+name: sa_github
 
-- Artifact Registry Writer (roles/artifactregistry.writer): Cloud Functions 2nd Gen (which is now the standard) creates a Docker image of your code and stores it in the Artifact Registry. Without this role, the build will fail at the image upload stage.
+### Build Function - sa_github: Roles:
 
-## Roles for logging and building
-- Logs Writer (roles/logging.logWriter): Allows you to write the execution logs of Cloud Build itself to Cloud Logging (fixes your initial error).
+Service name    Role Name                         Role ID/Description
+---------------------------------------------------------------------------------------------------------------------------------------------------
+Functions	      Cloud Functions Developer	        roles/cloudfunctions.developer
+                                                  Allows you to create, update, and delete functions.
+IAM	            Service Account User	            roles/iam.serviceAccountUser
+                                                  Critical. Allows Cloud Build to "impersonate" the function's runtime account when deploying it.
+IAM	            Project IAM Admin	                roles/resourcemanager.projectIamAdmin
+                                                  (Optional) To automatically configure --allow-unauthenticated.
+Registry	      Artifact Registry Writer	        roles/artifactregistry.writer
+                                                  Uploading the assembled Docker image to the registry.
+                                                  Cloud Functions 2nd Gen (which is now the standard) creates a Docker image of your code and stores it in the Artifact Registry. Without this role, the build will fail at the image upload stage.
+Build	          Cloud Build Service Agent	        roles/cloudbuild.serviceAgent
+Storage	        Storage Admin	                    roles/storage.admin
+                                                  Uploading a .zip archive with the code to Cloud Storage.
+                                                  grant the Admin-role not to the entire project, but only to a specific bucket where the function code is stored.
+Logging	        Logs Writer	                      roles/logging.logWriter
+                                                  Recording logs of the build process itself (Build Logs).
+                                                  Allows you to write the execution logs of Cloud Build itself to Cloud Logging (fixes your initial error).
 
-- Storage Object Viewer (roles/storage.objectViewer): For reading the source code that Cloud Build loads into a temporary bucket before deployment.
+### Bulding - Check roles:
+gcloud projects get-iam-policy test-cloud-run-490713 \
+--flatten="bindings[].members" \
+--format="table(bindings.role, bindings.members)" \
+--filter="bindings.members:(sa-github@test-cloud-run-490713.iam.gserviceaccount.com)"
 
-##assign these roles via terminal (replace PROJECT_ID and SA_EMAIL with your data):
-### Allow functions to be managed
-gcloud projects add-iam-policy-binding PROJECT_ID \
-    --member="serviceAccount:SA_EMAIL" \
-    --role="roles/cloudfunctions.developer"
 
-### Allow service accounts to be used
-gcloud projects add-iam-policy-binding PROJECT_ID \
-    --member="serviceAccount:SA_EMAIL" \
+## Runtime Service Account
+IAM -> Service account > Create
+name: sa_run
+
+### Run Function - sa_run_function: Roles:
+
+Service name    Role Name                         Role ID/Description
+---------------------------------------------------------------------------------------------------------------------------------------------------
+Logging         Logs Writer                       roles/logging.logWriter
+                                                  Дозволяє функції писати власні логи (console.log).
+Tracer          Cloud Trace Agent	                roles/cloudtrace.agent
+                                                  (Рекомендовано) Для відстеження часу виконання запитів.
+
+Running - check roles:
+gcloud projects get-iam-policy test-cloud-run-490713 \
+--flatten="bindings[].members" \
+--format="table(bindings.role, bindings.members)" \
+--filter="bindings.members:(sa-func-runtime@test-cloud-run-490713.iam.gserviceaccount.com)"
+
+Binding Service Accounts:
+надаємо роль iam.serviceAccountUser саме на ресурс акаунта func-runtime
+gcloud iam service-accounts add-iam-policy-binding \
+    func-runtime@test-cloud-run-490713.iam.gserviceaccount.com \
+    --member="serviceAccount:github@test-cloud-run-490713.iam.gserviceaccount.com" \
     --role="roles/iam.serviceAccountUser"
 
-### Allow logging
-gcloud projects add-iam-policy-binding PROJECT_ID \
-    --member="serviceAccount:SA_EMAIL" \
-    --role="roles/logging.logWriter"
-
-### Allow work with the image repository
-gcloud projects add-iam-policy-binding PROJECT_ID \
-    --member="serviceAccount:SA_EMAIL" \
-    --role="roles/artifactregistry.writer"
-
-### show enabled services
- gcloud services list --enabled
+Bindig Service Accountі - check status:
+Ми перевіряємо, чи має право акаунт деплою (github) виступати від імені рантайм-акаунта (func-runtime).
+gcloud iam service-accounts get-iam-policy func-runtime@test-cloud-run-490713.iam.gserviceaccount.com \
+    --format="table(bindings.role, bindings.members)"

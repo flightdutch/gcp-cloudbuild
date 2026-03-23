@@ -3,7 +3,7 @@ steps:
   # 0. DIAGNOSTICS: List files to make sure package.json is in place
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
-    args: ['-c', 'ls -F']
+    args: ['-c', 'ls -Fl ./*']
     id: CHECK_FILES
 
   # 1. build step (now this is demo-echo.In real project here would be run npm install)
@@ -18,7 +18,7 @@ steps:
     args: ['-c', 'echo "Running tests..."']
     id: TEST
 
-  # 3. DEPLOY: Deploying a function in Google Cloud Functions
+  # 3. DEPLOY: Deploying a function in Google Cloud Functions (2nd Gen)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     args:
       - gcloud
@@ -36,7 +36,17 @@ steps:
       # Allow unauthorized access for tests (optional)
       # doesn't work without Security Admin (roles/iam.securityAdmin)
       # - --allow-unauthenticated
-    id: DEPLOY
+      # Use a spec. account to execute the code
+      - --service-account=func-runtime@$PROJECT_ID.iam.gserviceaccount.com
+    id: 'Deploy Function'
+
+  # 4. Cleaning old images in the Artifact Registry (remaining the last 2)
+  - name: 'us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli'
+    id: 'Clean Old Images'
+    args:
+      - -repo=europe-west3-docker.pkg.dev/$PROJECT_ID/gcf-artifacts/my-nodejs-app
+      - -keep=2
+      - -tag-filter-any=.*
 
 # if 'build.service_account' is specified, the build must either (a) specify 'build.logs_bucket'
 options:
