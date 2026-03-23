@@ -48,13 +48,15 @@ steps:
     args:
       - '-c'
       - |
-        # Отримуємо назву щойно створеної ревізії
-        LATEST_REV=$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --format="value(metadata.name)")
-        # Отримуємо назву попередньої ревізії
-        PREV_REV=$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --offset 1 --format="value(metadata.name)")
+        # Використовуємо $$, щоб Cloud Build ігнорував ці змінні
+        LATEST_REV=$$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --format="value(metadata.name)")
+        PREV_REV=$$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --offset=1 --format="value(metadata.name)")
 
-        # Розподіляємо 10/90
-        gcloud run services update-traffic my-nodejs-app --region europe-west3 --to-revisions=$LATEST_REV=10,$PREV_REV=90
+        echo "Setting traffic: 10% to $$LATEST_REV and 90% to $$PREV_REV"
+
+        gcloud run services update-traffic my-nodejs-app \
+          --region europe-west3 \
+          --to-revisions=$$LATEST_REV=10,$$PREV_REV=90
 
   # 4. Cleaning old images in the Artifact Registry (remaining the last 2)
   - name: 'us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli'
