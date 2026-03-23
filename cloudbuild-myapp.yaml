@@ -35,6 +35,7 @@ steps:
       #--project is usually not needed if the build is in the same project,
       # but we left it in for flexibility.
       - --project=$_PROJECT_ID
+      - --max-instances=10 # Обмеження масштабів (це для рантайму)
       # Allow unauthorized access for tests (optional)
       # doesn't work without Security Admin (roles/iam.securityAdmin)
       # - --allow-unauthenticated
@@ -42,24 +43,46 @@ steps:
       - --service-account=func-runtime@$PROJECT_ID.iam.gserviceaccount.com
     id: 'Deploy Function'
 
-  # Canary Deployment - traffic distribution between versions
+  # 4. Canary Deployment - traffic distribution between versions
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Set Traffic Split'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        # Використовуємо $$, щоб Cloud Build ігнорував ці змінні
         LATEST_REV=$$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --format="value(metadata.name)")
         PREV_REV=$$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --offset=1 --format="value(metadata.name)")
 
-        echo "Setting traffic: 10% to $$LATEST_REV and 90% to $$PREV_REV"
+        if [ -n "$$PREV_REV" ]; then
+          echo "Canary active: 10% to $$LATEST_REV, 90% to $$PREV_REV"
+          gcloud run services update-traffic my-nodejs-app \
+            --region=europe-west3 \
+            --to-revisions=$$LATEST_REV=10,$$PREV_REV=90
+        else
+          echo "First deployment, skipping traffic split."
+        fi
 
-        gcloud run services update-traffic my-nodejs-app \
+  # 5. Cloud Run - Services - Revisions: list cleaning
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Purge Old Revisions'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Отримуємо список ревізій, які мають 0% трафіку, і видаляємо їх, крім останніх 3
+        # Це захистить ваші Canary та можливість швидкого відкату
+        REVISIONS_TO_DELETE=$$(gcloud run revisions list \
+          --service my-nodejs-app \
           --region europe-west3 \
-          --to-revisions=$$LATEST_REV=10,$$PREV_REV=90
+          --format="value(metadata.name)" \
+          --sort-by="~metadata.creationTimestamp" | tail -n +4)
 
-  # 4. Cleaning old images in the Artifact Registry (remaining the last 2)
+        for REV in $$REVISIONS_TO_DELETE; do
+          echo "Deleting old revision: $$REV"
+          gcloud run revisions delete $$REV --region europe-west3 --quiet || true
+        done
+
+  # 6. Cleaning old images in the Artifact Registry (remaining the last 2)
   - name: 'us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli'
     id: 'Clean Old Images'
     args:
