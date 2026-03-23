@@ -30,7 +30,8 @@ steps:
       - --trigger-http
       - --runtime=$_FUNCTION_RUNTIME
       - --entry-point=$_ENTRY_POINT
-      - --no-traffic # Деплоїмо без перемикання
+      # Деплоїмо без перемикання
+      - --allow-unauthenticated
       #--project is usually not needed if the build is in the same project,
       # but we left it in for flexibility.
       - --project=$_PROJECT_ID
