@@ -50,6 +50,8 @@ steps:
     args:
       - '-c'
       - |
+        echo "Waiting for API to stabilize..."
+        sleep 20
         LATEST_REV=$$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --format="value(metadata.name)")
         PREV_REV=$$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --offset=1 --format="value(metadata.name)")
 
