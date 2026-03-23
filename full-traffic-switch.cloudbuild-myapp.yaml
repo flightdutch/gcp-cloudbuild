@@ -30,7 +30,6 @@ steps:
       - --trigger-http
       - --runtime=$_FUNCTION_RUNTIME
       - --entry-point=$_ENTRY_POINT
-      - --no-traffic # Деплоїмо без перемикання
       #--project is usually not needed if the build is in the same project,
       # but we left it in for flexibility.
       - --project=$_PROJECT_ID
@@ -40,21 +39,6 @@ steps:
       # Use a spec. account to execute the code
       - --service-account=func-runtime@$PROJECT_ID.iam.gserviceaccount.com
     id: 'Deploy Function'
-
-  # Canary Deployment - traffic distribution between versions
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'Set Traffic Split'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        # Отримуємо назву щойно створеної ревізії
-        LATEST_REV=$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --format="value(metadata.name)")
-        # Отримуємо назву попередньої ревізії
-        PREV_REV=$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --offset 1 --format="value(metadata.name)")
-
-        # Розподіляємо 10/90
-        gcloud run services update-traffic my-nodejs-app --region europe-west3 --to-revisions=$LATEST_REV=10,$PREV_REV=90
 
   # 4. Cleaning old images in the Artifact Registry (remaining the last 2)
   - name: 'us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli'

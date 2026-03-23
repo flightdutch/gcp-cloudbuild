@@ -14,5 +14,5 @@ functions.http('helloWorld', (req, res) => {
   // Get the name from the query parameters or use the default "World"
   const name = req.query.name || req.body.name || 'World';
 
-  res.status(200).send(`Hello ${name}! Built and deployed via Cloud Build.`);
+  res.status(200).send(`Hello ${name}! Built and deployed via Cloud Build v3.0.0 - Canary Deployment test.`);
 });
