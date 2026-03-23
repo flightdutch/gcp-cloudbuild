@@ -45,24 +45,38 @@ steps:
 
   # 4. Canary Deployment - traffic distribution between versions
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'Set Traffic Split'
+    id: 'Set Canary Traffic'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        echo "Waiting for API to stabilize..."
-        sleep 20
+        echo "=== DEBUG: Поточний список ревізій ==="
+        gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 5
+
+        echo "Очікуємо оновлення API (15 сек)..."
+        sleep 15
+
+        # Отримуємо назви ревізій
         LATEST_REV=$$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --format="value(metadata.name)")
         PREV_REV=$$(gcloud run revisions list --service my-nodejs-app --region europe-west3 --limit 1 --offset=1 --format="value(metadata.name)")
 
-        if [ -n "$$PREV_REV" ]; then
-          echo "Canary active: 10% to $$LATEST_REV, 90% to $$PREV_REV"
-          gcloud run services update-traffic my-nodejs-app \
-            --region=europe-west3 \
-            --to-revisions=$$LATEST_REV=10,$$PREV_REV=90
-        else
-          echo "First deployment, skipping traffic split."
+        echo "=== АНАЛІЗ ==="
+        echo "Нова ревізія: $$LATEST_REV"
+        echo "Попередня ревізія: $$PREV_REV"
+
+        if [ -z "$$PREV_REV" ] || [ "$$LATEST_REV" == "$$PREV_REV" ]; then
+          echo "ПОМИЛКА: Не вдалося знайти дві різні ревізії для розподілу трафіку."
+          echo "Можливо, деплой не створив нову ревізію або список ще не оновився."
+          exit 1
         fi
+
+        echo "Виконуємо розподіл: 10% -> $$LATEST_REV, 90% -> $$PREV_REV"
+        gcloud run services update-traffic my-nodejs-app \
+          --region=europe-west3 \
+          --to-revisions=$$LATEST_REV=10,$$PREV_REV=90
+
+        echo "=== ПЕРЕВІРКА ТРАФІКУ ПІСЛЯ ОНОВЛЕННЯ ==="
+        gcloud run services describe my-nodejs-app --region=europe-west3 --format="value(status.traffic)"
 
   # 5. Cloud Run - Services - Revisions: list cleaning
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -71,6 +85,7 @@ steps:
     args:
       - '-c'
       - |
+        echo "=== Purge Old Revisions ==="
         # Отримуємо список ревізій, які мають 0% трафіку, і видаляємо їх, крім останніх 3
         # Це захистить ваші Canary та можливість швидкого відкату
         REVISIONS_TO_DELETE=$$(gcloud run revisions list \
@@ -88,6 +103,7 @@ steps:
   - name: 'us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli'
     id: 'Clean Old Images'
     args:
+      - echo "=== Clean Old Image ==="
       - -repo=europe-west3-docker.pkg.dev/$PROJECT_ID/gcf-artifacts/my-nodejs-app
       - -keep=2
       - -tag-filter-any=.*
